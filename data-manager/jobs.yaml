@@ -2,56 +2,157 @@
 kind: DataManagerJobDefinition
 kind-version: '2021.1'
 
-name: Template Jobs
+name: Predicions with Jaqpot models
 collection: im-template-jobs
 
 jobs:
 
-  echo:
-    name: Echo
+  jaqpot:
+    name: Prediction
     description: >-
-      Echos a message and writes it to an output file
+      Predicts molecular properties using Jaqpot predictive models
     version: '1.0.0'
-    category: echo
+    category: predictive models
     keywords:
-    - echo
+    - predictive models
+    - jaqpot
     image:
-      name: informaticsmatters/data-manager-job-template
+      name: jaqpot-test
       tag: '1.0.0'
       project-directory: /data
       working-directory: /data
     command: >-
-      /code/echo.py --msg '{{ msg }}' --out '{{ outputFile }}'
+      /code/jaqpot.py
+      --model '{{ modelID }}'
+      --input '{{ inputFile }}'
+      --output '{{ outputFile }}'
+      {% if delimiter is defined %}--delimiter {{ delimiter }}{% endif %}
+      {% if idColumn is defined %}--id-column {{ idColumn }}{% endif %}
+      {% if readHeader is defined and readHeader %}--read-header{% endif %}
+      {% if writeHeader is defined and writeHeader %}--write-header{% endif %}
     variables:
+      order:
+        options:
+        - modelID
+        - outputFile
+        - delimiter
+        - idColumn
+        - readHeader
+        - writeHeader
+      inputs:
+        type: object
+        required:
+        - inputFile
+        properties:
+          inputFile:
+            title: Molecules to predict (.sdf or .smi)
+            mime-types:
+            - squonk/x-smiles
+            - chemical/x-daylight-smiles
+            - chemical/x-mdl-sdfile
+            type: file
       outputs:
         type: object
         properties:
           outputFile:
-            title: Output file
+            title: Output file name (.sdf or .smi)
             mime-types:
-            - text/plain
+            - chemical/x-mdl-sdfile
+            - chemical/x-daylight-smiles
+            - chemical/x-mdl-sdfile
             creates: '{{ outputFile }}'
             type: file
-        required:
-        - outputFile
       options:
         type: object
-        properties:
-          msg:
-            title: The message to echo
-            type: string
         required:
-        - msg
-    # Tests
+        - modelID
+        - outputFile
+        - delimiter
+        - readHeader
+        - writeHeader
+        properties:
+          modelID:
+            title: Model ID
+            type: string
+            pattern: "^[A-Za-z0-9]$"
+          outputFile:
+            title: Output file name
+            type: string
+            pattern: "^[A-Za-z0-9_/\\.\\-]+$"
+          delimiter:
+            title: Delimiter for text formats
+            type: string
+            default: tab
+            enum:
+            - tab
+            - comma
+            - space
+            - pipe
+          idColumn:
+            title: ID field (name for .sdf, zero based index for .smi)
+            type: string
+          readHeader:
+            title: Read header line
+            type: boolean
+            default: true
+          writeHeader:
+            title: Write header line
+            type: boolean
+            default: true
     tests:
-      simple-execution:
+      smiles-execution:
+        inputs:
+          inputFile: data/10.smi
         options:
-          outputFile: echo.txt
-          msg: Hello, World!
+          modelID: fUAo2UQO8tTGZFhd5fPB
+          outputFile: predictions.sdf
+          readHeader: false
+          writeHeader: false
         checks:
           exitCode: 0
           outputs:
-          - name: echo.txt
+          - name: predictions.sdf
             checks:
             - exists: true
-            - lineCount: 1
+      smiles-error-execution:
+        inputs:
+          inputFile: data/10-error.smi
+        options:
+          modelID: fUAo2UQO8tTGZFhd5fPB
+          outputFile: predictions.sdf
+          readHeader: false
+          writeHeader: false
+        checks:
+          exitCode: 0
+          outputs:
+          - name: predictions.sdf
+            checks:
+            - exists: true
+      sdf-execution:
+        inputs:
+          inputFile: data/candidates-10.sdf
+        options:
+          modelID: fUAo2UQO8tTGZFhd5fPB
+          outputFile: predictions.sdf
+          readHeader: false
+          writeHeader: false
+        checks:
+          exitCode: 0
+          outputs:
+          - name: predictions.sdf
+            checks:
+            - exists: true
+      sdf-error-execution:
+        inputs:
+          inputFile: data/candidates-10-error.sdf
+        options:
+          modelID: fUAo2UQO8tTGZFhd5fPB
+          outputFile: predictions.sdf
+          readHeader: false
+          writeHeader: false
+        checks:
+          exitCode: 0
+          outputs:
+          - name: predictions.sdf
+            checks:
+            - exists: true
