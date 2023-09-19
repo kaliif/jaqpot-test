@@ -12,7 +12,6 @@ __pycache__/
 # dev files
 jaqpot_api_key.txt
 model_download_status.ods
-models/
 result.csv
 result.sdf
 src/model_loader.py
